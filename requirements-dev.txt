@@ -1,0 +1,4 @@
+-r requirements.txt
+pytest>=7.0
+pdfplumber>=0.9
+pymupdf>=1.22
