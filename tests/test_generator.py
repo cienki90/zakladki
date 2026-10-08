@@ -72,6 +72,43 @@ def test_generate_docx_content(sample_xlsx, tmp_path):
     assert page_breaks == 13
 
 
+def _page1_line_tops(path):
+    """Zwraca liste gornych wspolrzednych (bbox top) linii tekstu na 1. stronie."""
+    doc = fitz.open(str(path))
+    try:
+        tops = []
+        for block in doc[0].get_text("dict")["blocks"]:
+            for line in block.get("lines", []):
+                for span in line["spans"]:
+                    if span["text"].strip():
+                        tops.append(round(span["bbox"][1], 2))
+        return tops
+    finally:
+        doc.close()
+
+
+def test_generate_pdf_matches_sample_vertical_layout(sample_xlsx, sample_pdf, tmp_path):
+    """Pozycja pionowa trzech linii musi odpowiadac wzorcowi zakladki.pdf.
+
+    Chroni przed regresja z offsetem pionowym (tekst "wiszacy" przy gornej
+    krawedzi), ktora wystepowala, gdy TOP_OFFSET nie uwzglednial nadlinii fontu.
+    """
+    out = tmp_path / "out.pdf"
+    generate(sample_xlsx, str(out), "pdf")
+
+    generated_tops = _page1_line_tops(out)
+    sample_tops = _page1_line_tops(sample_pdf)
+
+    assert len(generated_tops) == 3
+    assert len(sample_tops) == 3
+
+    # Wzorzec: ~14.2 / 30.0 / 45.9 pkt od gory. Dopuszczamy ~1.5 pkt roznicy.
+    for got, expected in zip(generated_tops, sample_tops):
+        assert abs(got - expected) <= 1.5, (
+            "Linia na {} pkt odbiega od wzorca {} pkt".format(got, expected)
+        )
+
+
 def test_generate_unsupported_format(sample_xlsx, tmp_path):
     with pytest.raises(ValueError):
         generate(sample_xlsx, str(tmp_path / "x.txt"), "txt")

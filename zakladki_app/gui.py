@@ -9,6 +9,7 @@ dzialaja takze w srodowiskach bez tkinter (np. serwer CI bez ekranu).
 """
 
 import os
+import warnings
 
 from .generator import generate
 
@@ -181,10 +182,27 @@ def main():
             return  # Uzytkownik anulowal.
 
         try:
-            saved = run_generation(excel_path, out_path, choice)
+            # Przechwytujemy ostrzezenia (np. brak czcionki Unicode dla PDF),
+            # aby pokazac je uzytkownikowi zamiast ukrywac w konsoli.
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                saved = run_generation(excel_path, out_path, choice)
         except Exception as exc:  # noqa: BLE001 - pokazujemy przyjazny komunikat
             messagebox.showerror(APP_TITLE, _friendly_error(exc), parent=root)
             return
+
+        font_warnings = [
+            str(w.message) for w in caught
+            if issubclass(w.category, RuntimeWarning)
+        ]
+        if font_warnings:
+            messagebox.showwarning(
+                APP_TITLE,
+                "Plik został zapisany, ale pojawiło się ostrzeżenie:\n\n{}".format(
+                    "\n".join(font_warnings)
+                ),
+                parent=root,
+            )
 
         messagebox.showinfo(
             APP_TITLE,
@@ -212,13 +230,28 @@ def main():
 
     def choose_excel():
         """Otwiera okno wyboru pliku Excel i aktywuje przyciski formatu."""
+        # Oferujemy wylacznie *.xlsx - biblioteka openpyxl nie potrafi odczytac
+        # starego, binarnego formatu *.xls (wybranie takiego pliku dawaloby
+        # niezrozumialy blad), dlatego nie pokazujemy go w filtrze.
         path = filedialog.askopenfilename(
             parent=root,
             title="Wybierz plik Excel",
-            filetypes=[("Pliki Excel", "*.xlsx *.xls"),
+            filetypes=[("Pliki Excel (*.xlsx)", "*.xlsx"),
                        ("Wszystkie pliki", "*.*")],
         )
         if not path:
+            return
+        # Gdyby uzytkownik mimo wszystko wskazal stary plik .xls (np. przez
+        # filtr "Wszystkie pliki"), wyjasniamy czytelnie, ze obslugiwany jest
+        # tylko nowszy format .xlsx.
+        if path.lower().endswith(".xls"):
+            messagebox.showerror(
+                APP_TITLE,
+                "Wybrany plik ma stary format Excela (.xls), który nie jest "
+                "obsługiwany.\n\nZapisz plik w programie Excel jako "
+                "\"Skoroszyt programu Excel (*.xlsx)\" i spróbuj ponownie.",
+                parent=root,
+            )
             return
         state["excel_path"] = path
         selected_label.config(
