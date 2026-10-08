@@ -15,6 +15,9 @@ venv/
 .coverage
 htmlcov/
 
+# PyInstaller (artefakty budowania; zakladki.spec jest celowo wersjonowany)
+*.manifest
+
 # Output files
 *.generated.pdf
 *.generated.docx
