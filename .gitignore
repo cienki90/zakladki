@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtualenv
+.venv/
+venv/
+
+# Test / tooling
+.pytest_cache/
+.coverage
+htmlcov/
+
+# PyInstaller (artefakty budowania; zakladki.spec jest celowo wersjonowany)
+*.manifest
+
+# Output files
+*.generated.pdf
+*.generated.docx
+
+# OS
+.DS_Store
+Thumbs.db
